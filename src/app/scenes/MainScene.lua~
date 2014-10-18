@@ -1,0 +1,135 @@
+
+local MainScene = class("MainScene", function()
+    return display.newScene("MainScene")
+end)
+
+local SpriteItem = import("app.scenes.SpriteItem")
+local Timer = import("framework.cc.utils.Timer")
+
+local ITEM_GAP = 0
+local SCORE_START = 30
+local SCORE_STEP = 10
+
+function MainScene:ctor()
+    cc.ui.UILabel.new({
+            UILabelType = 2, text = "Hello, World", size = 26})
+        :align(display.CENTER, display.cx+80, display.cy)
+        :addTo(self)
+        
+    display.newSprite("background.png"):pos(display.cx,display.cy):addTo(self)
+    display.addSpriteFrames("sushi.plist", "sushi.pvr.ccz")
+    
+    self.m_level = 1
+    self.m_rowLenght = 10
+    self.m_colLenght = 6
+    self.m_goalScore = 100
+    self.m_leftMovements = 10
+    self.m_levelScore = 0
+
+    self.m_matrixLeftBottomX = (display.width - SpriteItem.getContentWidth() * self.m_colLenght - (self.m_colLenght - 1) * ITEM_GAP) / 2
+    self.m_matrixLeftBottomY = (display.height - SpriteItem.getContentWidth() * self.m_rowLenght - (self.m_rowLenght - 1) * ITEM_GAP) / 2
+
+    -- 创建BatchNode
+    self.m_batchNode = display.newBatchNode("sushi.pvr.ccz")
+    self:addChild(self.m_batchNode)
+
+    -- init array
+    local arraySize = self.m_rowLenght * self.m_colLenght
+    self.m_matrix = {}
+    self.m_acticves = {}
+
+    -- active score lable
+    self.m_labelActiveScore = cc.ui.UILabel.new({
+            UILabelType = 2, text = "Hello, World", size = 26})
+    self.m_labelActiveScore:align(display.CENTER, display.cx, display.cy)
+    self:addChild(self.m_labelActiveScore)
+
+    local touchLayer = display.newLayer()
+    touchLayer:setTouchEnabled(true)
+    touchLayer:addNodeEventListener(cc.NODE_TOUCH_EVENT, function (event)
+        print(event.name, event.x, event.y)
+        if(event.name == "ended") then
+            self:touchEndEvent(event.x, event.y)
+        else
+            return true
+        end
+    end)
+    self:addChild(touchLayer)
+    self:initMartix()
+end
+
+function MainScene:initMartix()
+    for row = 0, self.m_rowLenght-1 do
+        for col = 1, self.m_colLenght do
+            if (1 == row and 1 == col) then
+                self:createAndDropItem(row, col)
+            else
+                self:createAndDropItem(row, col)
+            end
+        end
+    end
+end
+
+function MainScene:createAndDropItem(row, col, imgIndex)
+    local newItem = SpriteItem.new(self.m_batchNode, row, col, imgIndex)
+    local endPosition = self:positionOfItem(row, col)
+    local startPosition = cc.p(endPosition.x, endPosition.y + display.height / 2)
+    newItem:setPosition(startPosition)
+    local speed = startPosition.y / (2 * display.height)
+    newItem:runAction(cc.MoveTo:create(speed, endPosition))
+    self.m_matrix[row * self.m_colLenght + col] = newItem
+    self.m_batchNode:addChild(newItem)
+end
+
+function MainScene:positionOfItem(row, col)
+    local x = self.m_matrixLeftBottomX + (SpriteItem.getContentWidth() + ITEM_GAP) * (col-1) + SpriteItem.getContentWidth() / 2
+    local y = self.m_matrixLeftBottomY + (SpriteItem.getContentWidth() + ITEM_GAP) * (row) + SpriteItem.getContentWidth() / 2
+    return cc.p(x, y)
+end
+
+function MainScene:itemOfPoint(point)
+    local item = nil
+    local rect = cc.rect(0, 0, 0, 0)
+
+    for row = 0, self.m_rowLenght-1 do
+        for col = 1, self.m_colLenght do
+            item = self.m_matrix[row * self.m_colLenght + col]
+            if (item) then
+                rect.x = item:getPositionX() - (item:getContentSize().width / 2)
+                rect.y = item:getPositionY() - (item:getContentSize().height / 2)
+                rect.size = item:getContentSize()
+                if (rect:containsPoint(point)) then
+                    return item
+                end
+            end
+        end
+    end
+end
+
+function MainScene:touchEndEvent(x,y)
+
+    local item = self:itemOfPoint(cc.p(x,y))
+    if (item) then
+        if (item:isActive()) then
+            -- 1. clean actived items, remove from array, explosion animation, score animation.
+            self:removeActivedItems();
+            -- 2. reform metrix
+            self:dropItems();
+            -- 3. check for gameover logic.
+--            self:checkGameOver();
+        else
+            -- 1. clean old actived items
+            self:inactiveItems();
+            -- 2. active Neighbor all items
+            self:activeNeighborItems(item);
+        end
+    end
+end
+
+function MainScene:onEnter()
+end
+
+function MainScene:onExit()
+end
+
+return MainScene

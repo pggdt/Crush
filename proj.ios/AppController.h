@@ -28,12 +28,10 @@
 #define kOpenGameWaitForAlert   1
 #define kOpenGameExit           2
 
-@interface AppController : NSObject <UIAccelerometerDelegate, UIAlertViewDelegate, UITextFieldDelegate, UIApplicationDelegate, UIAlertViewDelegate> {
+@interface AppController : NSObject <UIAccelerometerDelegate, UIAlertViewDelegate, UITextFieldDelegate, UIApplicationDelegate, UIAlertViewDelegate>
+{
     UIWindow *window;
     @public RootViewController *viewController;
-
-    int openGame;
-    int appUpdateCheckResult;
 }
 
 @end
